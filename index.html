@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>For You ❤️</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#f7f1e8;--fade:2200ms}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden;font-family:"Cormorant Garamond",Georgia,serif;color:var(--cream)}
+#app{position:fixed;inset:0;background:#000}
+.layer,.bg{position:absolute;inset:0;opacity:0;transition:opacity var(--fade) ease-in-out}
+.bg{background-position:center;background-size:cover;filter:blur(34px);transform:scale(1.14)}
+.bg:after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.47)}
+.layer{background-position:center;background-size:contain;background-repeat:no-repeat;filter:drop-shadow(0 18px 45px rgba(0,0,0,.55))}
+.active{opacity:1}
+.zoom-a{animation:zoomA 9800ms ease-in-out forwards}.zoom-b{animation:zoomB 9800ms ease-in-out forwards}.zoom-c{animation:zoomC 9800ms ease-in-out forwards}
+@keyframes zoomA{from{transform:scale(1.01)}to{transform:scale(1.075)}}@keyframes zoomB{from{transform:scale(1.075) translateX(-.6%)}to{transform:scale(1.015) translateX(.6%)}}@keyframes zoomC{from{transform:scale(1.025) translateY(.5%)}to{transform:scale(1.085) translateY(-.5%)}}
+.vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 42%,rgba(0,0,0,.38) 100%),linear-gradient(to bottom,rgba(0,0,0,.28),transparent 22%,transparent 75%,rgba(0,0,0,.34))}
+#intro{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:min(9vw,70px);background:#000;transition:opacity 2600ms ease}
+#introText{max-width:980px;text-align:center;font-size:clamp(2rem,5.1vw,4.8rem);font-weight:500;line-height:1.18;letter-spacing:.01em;text-shadow:0 12px 35px rgba(0,0,0,.9);white-space:pre-wrap}
+.cursor{display:inline-block;margin-left:.08em;animation:blink 950ms steps(2,start) infinite}@keyframes blink{50%{opacity:0}}
+#start{position:fixed;z-index:20;inset:0;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.9)}
+#startCard{text-align:center}
+button{font-family:inherit}
+#start button,#audioHint{border:1px solid rgba(247,241,232,.75);color:var(--cream);background:rgba(255,255,255,.06);border-radius:999px;cursor:pointer}
+#start button{font-size:1.65rem;padding:14px 34px}
+#start p{margin:18px 0 0;font-size:1.1rem;color:rgba(247,241,232,.75)}
+#audioHint{position:fixed;left:50%;bottom:max(22px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:10;display:none;backdrop-filter:blur(10px);font-size:1.1rem;padding:10px 20px}
+@media(max-width:700px){#introText{font-size:clamp(2rem,9vw,3.4rem)}.bg{filter:blur(28px);transform:scale(1.18)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bgA" class="bg"></div><div id="bgB" class="bg"></div>
+  <div id="slideA" class="layer"></div><div id="slideB" class="layer"></div>
+  <div class="vignette"></div>
+  <section id="intro"><div id="introText"></div></section>
+  <div id="start"><div id="startCard"><button id="startBtn">▶ Rozpocznij</button><p>Dotknij, aby włączyć muzykę i pokaz.</p></div></div>
+  <button id="audioHint">▶ Włącz muzykę</button>
+  <audio id="audio" preload="auto" loop></audio>
+</div>
+<script src="config.js"></script>
+<script>
+const cfg=window.SLIDESHOW_CONFIG;
+document.documentElement.style.setProperty("--fade", cfg.fadeDuration+"ms");
+const audio=document.getElementById("audio"); audio.src=cfg.audioFile;
+const intro=document.getElementById("intro"), introText=document.getElementById("introText");
+const start=document.getElementById("start"), startBtn=document.getElementById("startBtn"), audioHint=document.getElementById("audioHint");
+const slides=[document.getElementById("slideA"),document.getElementById("slideB")], bgs=[document.getElementById("bgA"),document.getElementById("bgB")];
+let idx=0, using=0, started=false, wakeLock=null;
+const motions=["zoom-a","zoom-b","zoom-c"];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function keepAwake(){try{if("wakeLock" in navigator) wakeLock=await navigator.wakeLock.request("screen")}catch(e){}}
+async function typeLine(text,speed){introText.innerHTML='<span class="cursor">|</span>';for(let i=1;i<=text.length;i++){introText.innerHTML=text.slice(0,i)+'<span class="cursor">|</span>';await sleep(speed)}}
+async function fadeText(){introText.style.transition="opacity 2100ms ease";introText.style.opacity=0;await sleep(2300);introText.innerHTML="";introText.style.opacity=1}
+async function runIntro(){intro.style.display="flex";intro.style.opacity=1;await sleep(cfg.intro.delayBeforeTyping);await typeLine(cfg.intro.firstText,cfg.intro.typingSpeed);await sleep(cfg.intro.holdFirstText);await fadeText();introText.innerHTML=cfg.intro.secondText;await sleep(cfg.intro.holdSecondText);intro.style.opacity=0;await sleep(2600);intro.style.display="none"}
+function setImage(el,name){el.style.backgroundImage=`url("${name}")`}
+function showPhoto(i){const name=cfg.photos[i%cfg.photos.length], next=using?0:1, old=using;const s=slides[next], b=bgs[next];s.className="layer";void s.offsetWidth;setImage(s,name);setImage(b,name);s.classList.add(motions[i%motions.length]);bgs[old].classList.remove("active");slides[old].classList.remove("active");b.classList.add("active");s.classList.add("active");using=next}
+async function runSlides(){idx=0;showPhoto(idx);while(true){await sleep(cfg.durations[idx%cfg.durations.length]);idx=(idx+1)%cfg.photos.length;showPhoto(idx)}}
+async function begin(){if(started)return;started=true;start.style.display="none";await keepAwake();audio.currentTime=0;try{await audio.play()}catch(e){audioHint.style.display="block"}try{await document.documentElement.requestFullscreen()}catch(e){}await runIntro();runSlides()}
+audioHint.onclick=async()=>{await audio.play();audioHint.style.display="none"};
+startBtn.onclick=begin;
+window.addEventListener("load",async()=>{try{await audio.play();begin()}catch(e){start.style.display="flex"}});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible") keepAwake()});
+</script>
+</body>
+</html>
